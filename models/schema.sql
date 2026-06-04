@@ -25,11 +25,12 @@ CREATE TABLE IF NOT EXISTS attempts (
 );
 
 CREATE TABLE IF NOT EXISTS wrong_notes (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id       INTEGER NOT NULL REFERENCES users(id),
-    question_id   INTEGER NOT NULL REFERENCES questions(id),
-    wrong_count   INTEGER NOT NULL DEFAULT 1,
-    last_wrong_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    mastered      INTEGER NOT NULL DEFAULT 0,
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id            INTEGER NOT NULL REFERENCES users(id),
+    question_id        INTEGER NOT NULL REFERENCES questions(id),
+    wrong_count        INTEGER NOT NULL DEFAULT 1,
+    consecutive_correct INTEGER NOT NULL DEFAULT 0,
+    last_wrong_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    mastered           INTEGER NOT NULL DEFAULT 0,
     UNIQUE(user_id, question_id)
 );
