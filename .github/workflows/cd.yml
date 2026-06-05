@@ -1,0 +1,67 @@
+name: CD
+
+# main push 시마다 트리거되지만, CD_ENABLED=true 일 때만 실제 배포 실행
+# 활성화: GitHub repo → Settings → Variables → Actions → CD_ENABLED=true
+# 필요한 Secrets: DOCKERHUB_USERNAME, DOCKERHUB_TOKEN, EC2_HOST, EC2_USER, EC2_SSH_KEY
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    if: vars.CD_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/aws-saa-bot
+          tags: |
+            type=sha,format=short
+            type=raw,value=latest
+
+      - name: Build and push to Docker Hub
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+
+  deploy:
+    needs: build-and-push
+    if: vars.CD_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH into EC2 and redeploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/aws-saa-bot:latest
+            docker pull $IMAGE
+            docker stop aws-saa-bot || true
+            docker rm   aws-saa-bot || true
+            docker run -d \
+              --name aws-saa-bot \
+              --restart unless-stopped \
+              -v ~/aws-saa-bot-data:/app/data \
+              -e DISCORD_TOKEN=${{ secrets.DISCORD_TOKEN }} \
+              -e OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }} \
+              -e DAILY_REVIEW_ENABLED=false \
+              $IMAGE
