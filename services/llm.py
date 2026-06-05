@@ -9,6 +9,7 @@ log = logging.getLogger(__name__)
 
 OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 
+# 429 시 순서대로 다음 모델로 폴백
 _FALLBACK_MODELS = [
     os.getenv("LLM_MODEL", "google/gemma-4-31b-it:free"),
     "openai/gpt-oss-20b:free",
@@ -17,6 +18,7 @@ _FALLBACK_MODELS = [
     "meta-llama/llama-3.3-70b-instruct:free",
     "meta-llama/llama-3.2-3b-instruct:free",
 ]
+# 중복 제거, 순서 유지
 _MODELS: list[str] = list(dict.fromkeys(_FALLBACK_MODELS))
 
 _QUIZ_PROMPT = """\
@@ -28,16 +30,25 @@ Return ONLY a valid JSON object — no markdown fences, no text outside the JSON
 Schema:
 {{
   "question": "<question text>",
-  "options": {{"A": "<option A>", "B": "<option B>", "C": "<option C>", "D": "<option D>"}},
+  "options": {{
+    "A": "<option A>",
+    "B": "<option B>",
+    "C": "<option C>",
+    "D": "<option D>"
+  }},
   "answer": "<one letter: A|B|C|D>",
   "explanation": "<why the answer is correct and why the others are wrong>"
 }}
 
-Quality rules:
+Quality rules (cross-validation checklist):
 - Realistic SAA-C03 exam style, scenario-based preferred
-- Exactly ONE correct answer
+- Exactly ONE correct answer — if ambiguous, add a condition
+  (e.g. "using default settings", "for lowest cost")
+- Avoid superlatives ("largest", "first") unless the criterion is explicitly stated in the question
+- Do not reference features that change frequently; anchor claims to current SAA-C03 exam scope
 - All four options must be plausible AWS services or configurations
 - Explanation must reference AWS official documentation concepts
+  and clarify why each wrong option is incorrect
 """
 
 _EXPLAIN_PROMPT = """\
@@ -103,6 +114,7 @@ async def _call(prompt: str) -> str:
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
         raise RuntimeError("OPENROUTER_API_KEY is not set")
+
     last_err: Exception | None = None
     for model in _MODELS:
         try:
@@ -114,6 +126,7 @@ async def _call(prompt: str) -> str:
         except Exception as exc:
             log.warning("Error with %s: %s", model, exc)
             last_err = exc
+
     raise RuntimeError(f"모든 모델이 응답하지 않습니다: {last_err}")
 
 

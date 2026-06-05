@@ -20,10 +20,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      DISCORD_TOKEN: fake_token
-      OPENROUTER_API_KEY: fake_key
+      DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       AWS_REAL_DEPLOY: "false"
-      DB_PATH: ":memory:"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
