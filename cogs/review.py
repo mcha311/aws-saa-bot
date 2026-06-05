@@ -1,10 +1,14 @@
 import json
+import logging
+import traceback
 
 import discord
 from discord import app_commands
 from discord.ext import commands
 
 from services.db import get_or_create_user, get_wrong_notes, save_attempt, update_mastery
+
+log = logging.getLogger(__name__)
 
 
 class ReviewView(discord.ui.View):
@@ -134,18 +138,13 @@ class Review(commands.Cog):
                 await interaction.followup.send(embed=embed, ephemeral=True)
                 return
 
-            note = notes[0]
+            note = notes[0]  # highest wrong_count first
             view = ReviewView(note, db_user_id, interaction.user.id)
             msg = await interaction.followup.send(embed=_review_embed(note), view=view)
             view.message = msg
 
         except Exception as exc:
-            import logging
-            import traceback
-
-            logging.getLogger(__name__).error(
-                "review error: %s", traceback.format_exc()
-            )
+            log.error("review error: %s", traceback.format_exc())
             await interaction.followup.send(f"오류가 발생했습니다: {exc}", ephemeral=True)
 
 

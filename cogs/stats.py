@@ -1,8 +1,13 @@
+import logging
+import traceback
+
 import discord
 from discord import app_commands
 from discord.ext import commands
 
 from services.db import get_leaderboard, get_or_create_user, get_user_stats
+
+log = logging.getLogger(__name__)
 
 
 def _bar(pct: float, length: int = 8) -> str:
@@ -62,12 +67,7 @@ class Stats(commands.Cog):
             await interaction.followup.send(embed=embed)
 
         except Exception as exc:
-            import logging
-            import traceback
-
-            logging.getLogger(__name__).error(
-                "stats error: %s", traceback.format_exc()
-            )
+            log.error("stats error: %s", traceback.format_exc())
             await interaction.followup.send(f"오류가 발생했습니다: {exc}", ephemeral=True)
 
     @app_commands.command(name="leaderboard", description="서버 Top 5 학습 랜킹을 봅니다")
@@ -110,12 +110,7 @@ class Stats(commands.Cog):
             await interaction.followup.send(embed=embed)
 
         except Exception as exc:
-            import logging
-            import traceback
-
-            logging.getLogger(__name__).error(
-                "leaderboard error: %s", traceback.format_exc()
-            )
+            log.error("leaderboard error: %s", traceback.format_exc())
             await interaction.followup.send(f"오류가 발생했습니다: {exc}", ephemeral=True)
 
 

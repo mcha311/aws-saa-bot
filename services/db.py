@@ -10,14 +10,14 @@ SCHEMA_PATH = Path(__file__).parent.parent / "models" / "schema.sql"
 async def init_db() -> None:
     async with aiosqlite.connect(DB_PATH) as db:
         await db.executescript(SCHEMA_PATH.read_text())
-        # migration: consecutive_correct column (added in Stage 2)
+        # safety net for existing DBs created before consecutive_correct was in schema.sql
         try:
             await db.execute(
                 "ALTER TABLE wrong_notes ADD COLUMN"
                 " consecutive_correct INTEGER NOT NULL DEFAULT 0"
             )
         except Exception:
-            pass  # column already exists
+            pass
         await db.commit()
 
 
@@ -220,6 +220,7 @@ async def get_user_stats(user_id: int) -> dict:
         ) as cur:
             date_rows = await cur.fetchall()
 
+    # streak: consecutive days ending today or yesterday
     streak = 0
     if date_rows:
         today = date.today()

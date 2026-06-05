@@ -1,5 +1,7 @@
 import json
+import logging
 import random
+import traceback
 
 import discord
 from discord import app_commands
@@ -8,6 +10,7 @@ from discord.ext import commands
 from services.db import get_or_create_user, save_attempt, save_question, upsert_wrong_note
 from services.llm import explain_concept, generate_quiz
 
+log = logging.getLogger(__name__)
 DOMAINS = ["EC2", "S3", "VPC", "IAM", "RDS", "Lambda", "CloudFront", "Route53"]
 
 
@@ -130,9 +133,7 @@ class Quiz(commands.Cog):
             view.message = msg
 
         except Exception as exc:
-            import logging
-            import traceback
-            logging.getLogger(__name__).error("quiz error: %s", traceback.format_exc())
+            log.error("quiz error: %s", traceback.format_exc())
             await interaction.followup.send(
                 f"오류가 발생했습니다: {exc}", ephemeral=True
             )
